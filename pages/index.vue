@@ -15,6 +15,11 @@
         <ProductCard :product="product" />
       </div>
     </div>
+    <div v-if="searchResultsToDisplay.length > 0" class="self-end flex mt-8">
+      <p class="mr-4">Viewing page {{ currentPage }}/{{ numberOfPages }}</p>
+      <button class="page-btn" @click="seePrevPage">Prev</button>
+      <button class="page-btn" @click="seeNextPage">Next</button>
+    </div>
   </div>
 </template>
 
@@ -23,6 +28,7 @@ import debounce from "lodash/debounce";
 import ProductCard from "@/components/ProductCard";
 
 const BASE_SEARCH_MESSAGE = "Searching";
+const ITEMS_PER_PAGE = 10;
 
 export default {
   components: {
@@ -35,11 +41,22 @@ export default {
       searchError: false,
       loadingMessage: BASE_SEARCH_MESSAGE,
       loadingInterval: undefined,
+      currentPage: 1,
     };
   },
   computed: {
     searchResultsToDisplay() {
-      return this.searchResults.slice(0, 10);
+      if (this.searchResults.length > ITEMS_PER_PAGE) {
+        return this.searchResults.slice(
+          this.currentPage * ITEMS_PER_PAGE - ITEMS_PER_PAGE,
+          this.currentPage * ITEMS_PER_PAGE
+        );
+      } else {
+        return this.searchResults;
+      }
+    },
+    numberOfPages() {
+      return Math.ceil(this.searchResults.length / ITEMS_PER_PAGE);
     },
   },
   watch: {
@@ -73,6 +90,16 @@ export default {
     searchDebounce: debounce(function (event) {
       this.getSearchResults(event.target.value);
     }, 300),
+    seePrevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+      }
+    },
+    seeNextPage() {
+      if (this.currentPage < this.numberOfPages) {
+        this.currentPage++;
+      }
+    },
   },
 };
 </script>
@@ -81,7 +108,7 @@ export default {
 /* Sample `apply` at-rules with Tailwind CSS */
 .page-wrapper {
   width: 100%;
-  @apply min-h-screen w-full flex flex-col items-center;
+  @apply min-h-screen w-full flex flex-col items-center p-16;
 }
 
 .title {
@@ -96,5 +123,9 @@ export default {
 .loader {
   width: 200px;
   @apply font-medium text-2xl text-left py-8;
+}
+
+.page-btn {
+  @apply border-solid rounded shadow transition px-2 py-1 mx-1 bg-gray-600 text-white;
 }
 </style>
