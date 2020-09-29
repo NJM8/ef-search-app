@@ -228,7 +228,7 @@ export default {
         this.currentPage++;
       }
     },
-    // price sorting, here we use the price from the lowestPriceMapper which assumes the lowest price available for the item and we sort by that, this can make sort slightly inaccurate for bulk items, I would add more options and get better results with more knowledge of the terms and product Objects. Seems to be a touch slow for larger data sets (looking at you Milk), if only supplying 2 sort options for price this could be done in the background after the data set loads.
+    // price sorting, here we use the price from the lowestPriceMapper which assumes the lowest price available for the item and we sort by that, this can make sort slightly inaccurate for bulk items, I would add more options and get better results with more knowledge of the terms and product Objects. Seems to be a touch slow for larger data sets (looking at you Milk), if only supplying 2 sort options for price this could be done in the background after the data set loads. Also I would prefer to push unpriced items to the end of the sort, in this case I believe using reduce to indentify the sortable items then sorting would drastically improve performance.
     sortByPrice(a, b, LH = true) {
       const lowestPriceA = lowestPriceMapper(a.VendorFoodItems) || 0;
       const lowestPriceB = lowestPriceMapper(b.VendorFoodItems) || 0;
