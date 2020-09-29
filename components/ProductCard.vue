@@ -15,8 +15,8 @@
     <p v-if="product.SizeDesc1">
       <span class="font-medium">Packaging:</span> {{ product.SizeDesc1 }}
     </p>
-    <p v-if="lowestPrice[0]">
-      <span class="font-medium">Price:</span> ${{ lowestPrice[0] }}
+    <p v-if="lowestPrice">
+      <span class="font-medium">Price:</span> ${{ lowestPrice }}
     </p>
   </div>
 </template>

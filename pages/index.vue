@@ -1,23 +1,64 @@
 <template>
   <div class="page-wrapper">
-    <p class="title py-8">Everything Food Quick Search</p>
-    <input
-      type="text"
-      class="input w-20"
-      placeholder="Type to search"
-      @input="searchDebounce($event)"
-    />
+    <p class="title pb-8 md:pt-8">Everything Food Quick Search</p>
+    <div class="flex flex-col lg:flex-row lg:items-center">
+      <p class="mr-4">Search:</p>
+      <input
+        type="text"
+        class="input w-20"
+        placeholder="Type to search"
+        @input="searchDebounce($event)"
+      />
+    </div>
     <div v-if="loading" class="loader">
       <p>{{ loadingMessage }}</p>
     </div>
-    <div v-if="searchResultsToDisplay.length > 0" class="self-end mr-8">
-      <span class="mr-4">Sort By: </span>
-      <select id="sortBy" v-model="selectedSortOption" name="sortBy">
-        <option v-for="(option, key) in sortOptions" :key="key" :value="option">
-          {{ option }}
-        </option>
-      </select>
+    <div
+      v-if="searchResultsToDisplay.length > 0"
+      class="mt-4 flex flex-col lg:flex-row"
+    >
+      <div class="lg:mr-4">
+        <span class="mr-4">Filter Option: </span>
+        <select
+          id="filter-options"
+          v-model="selectedFilterOption"
+          name="filter-options"
+          class="input"
+        >
+          <option
+            v-for="(option, key) in filterOptions"
+            :key="key"
+            :value="option"
+          >
+            {{ option }}
+          </option>
+        </select>
+      </div>
+      <div class="mt-4 lg:mt-0">
+        <span class="mr-4">Filter Value: </span>
+        <select
+          id="filter-by"
+          v-model="selectedFilterValue"
+          name="filter-by"
+          class="input"
+        >
+          <option
+            v-for="(option, key) in filterValues"
+            :key="key"
+            :value="option"
+          >
+            {{ option }}
+          </option>
+        </select>
+      </div>
+      <button class="ml-4" @click="clearFilters">Clear</button>
     </div>
+    <SortBy
+      v-if="searchResultsToDisplay.length > 0"
+      v-model="selectedSortOption"
+      :sort-options="sortOptions"
+      class="mt-4"
+    />
     <div class="flex flex-wrap">
       <div v-for="product in searchResultsToDisplay" :key="product.FoodItemID">
         <ProductCard :product="product" />
@@ -34,10 +75,14 @@
 <script>
 import debounce from "lodash/debounce";
 import ProductCard from "@/components/ProductCard";
+import SortBy from "@/components/SortBy";
 import { lowestPriceMapper } from "@/helpers/helpers";
 
+// globals that will not change and do not need to be reactive
 const BASE_SEARCH_MESSAGE = "Searching";
 const ITEMS_PER_PAGE = 10;
+
+// enums for static values
 const SORT_OPTIONS_ENUM = {
   EVERTHING_FOOD_QUALITY_SCORE_HL: "Everything Food Quality Score High to Low",
   EVERTHING_FOOD_QUALITY_SCORE_LH: "Everything Food Quality Score Low to High",
@@ -47,10 +92,16 @@ const SORT_OPTIONS_ENUM = {
   ALPHABETICAL_ZA: "Alphabetical Z-A",
 };
 
+const FILTER_OPTIONS_ENUM = {
+  BRAND: "Brand",
+  PACKAGE_SIZE: "Package Size",
+};
+
 export default {
   name: "Index",
   components: {
     ProductCard,
+    SortBy,
   },
   data() {
     return {
@@ -66,12 +117,10 @@ export default {
         [SORT_OPTIONS_ENUM.EVERTHING_FOOD_QUALITY_SCORE_LH]: (a, b) =>
           a.ABBScore > b.ABBScore ? 1 : -1,
         [SORT_OPTIONS_ENUM.PRICE_LH]: (a, b) => {
-          console.log(this.sortByPrice(a, b));
           return this.sortByPrice(a, b);
         },
         [SORT_OPTIONS_ENUM.PRICE_HL]: (a, b) => {
-          console.log(this.sortByPrice(a, b, false));
-          this.sortByPrice(a, b, false);
+          return this.sortByPrice(a, b, false);
         },
         [SORT_OPTIONS_ENUM.ALPHABETICAL_AZ]: (a, b) =>
           a.Desc1 > b.Desc1 ? 1 : -1,
@@ -80,29 +129,63 @@ export default {
       },
       sortOptions: SORT_OPTIONS_ENUM,
       selectedSortOption: SORT_OPTIONS_ENUM.ALPHABETICAL_AZ,
+      filterOptions: FILTER_OPTIONS_ENUM,
+      filterOptionMap: {
+        [FILTER_OPTIONS_ENUM.BRAND]: (item) => item.Brand.Desc1,
+        [FILTER_OPTIONS_ENUM.PACKAGE_SIZE]: (item) => item.SizeDesc1,
+      },
+      selectedFilterOption: undefined,
+      selectedFilterValue: undefined,
     };
   },
   computed: {
+    // computes how to display data, first we filter if there are filters to apply, then we sort, then we slice for the pagination
     searchResultsToDisplay() {
-      const sortedSearchResults = this.searchResults
-        .slice()
-        .sort(this.sortFunctionMap[this.selectedSortOption]);
+      let processedSearchResults = this.searchResults.slice();
 
-      if (sortedSearchResults.length > ITEMS_PER_PAGE) {
-        console.log(this.sortFunctionMap[this.selectedSortOption]);
-        return sortedSearchResults.slice(
-          this.currentPage * ITEMS_PER_PAGE - ITEMS_PER_PAGE,
-          this.currentPage * ITEMS_PER_PAGE
+      if (this.selectedFilterOption && this.selectedFilterValue) {
+        processedSearchResults = processedSearchResults.filter(
+          (product) =>
+            this.filterOptionMap[this.selectedFilterOption](product) ===
+            this.selectedFilterValue
         );
-      } else {
-        return sortedSearchResults;
       }
+
+      if (this.selectedSortOption) {
+        processedSearchResults.sort(
+          this.sortFunctionMap[this.selectedSortOption]
+        );
+      }
+
+      return processedSearchResults.length > ITEMS_PER_PAGE
+        ? processedSearchResults.slice(
+            this.currentPage * ITEMS_PER_PAGE - ITEMS_PER_PAGE,
+            this.currentPage * ITEMS_PER_PAGE
+          )
+        : processedSearchResults;
     },
     numberOfPages() {
       return Math.ceil(this.searchResults.length / ITEMS_PER_PAGE);
     },
+    // determine what values are available to the selected sort option from the data set, prevent duplicates and sort alphabetically
+    filterValues() {
+      if (this.selectedFilterOption) {
+        const values = this.searchResults.reduce((res, product) => {
+          const filterOptionValue = this.filterOptionMap[
+            this.selectedFilterOption
+          ](product);
+          if (filterOptionValue && !res[filterOptionValue]) {
+            res[filterOptionValue] = filterOptionValue;
+          }
+          return res;
+        }, {});
+        return Object.values(values).sort((a, b) => (a > b ? 1 : -1));
+      }
+      return [];
+    },
   },
   watch: {
+    // cheesy loading indicator, better served by a fancy loading spinner in a global component
     loading() {
       if (this.loading) {
         this.loadingInterval = setInterval(() => {
@@ -113,6 +196,9 @@ export default {
       } else {
         clearInterval(this.loadingInterval);
       }
+    },
+    selectedFilterOption() {
+      this.selectedFilterValue = undefined;
     },
   },
   methods: {
@@ -142,13 +228,10 @@ export default {
         this.currentPage++;
       }
     },
+    // price sorting, here we use the price from the lowestPriceMapper which assumes the lowest price available for the item and we sort by that, this can make sort slightly inaccurate for bulk items, I would add more options and get better results with more knowledge of the terms and product Objects. Seems to be a touch slow for larger data sets (looking at you Milk), if only supplying 2 sort options for price this could be done in the background after the data set loads.
     sortByPrice(a, b, LH = true) {
-      const lowestPriceA = lowestPriceMapper(a.VendorFoodItems.slice())[0] || 0;
-      const lowestPriceB = lowestPriceMapper(b.VendorFoodItems.slice())[0] || 0;
-
-      console.log(lowestPriceA);
-      console.log(lowestPriceB);
-      console.log("-----");
+      const lowestPriceA = lowestPriceMapper(a.VendorFoodItems) || 0;
+      const lowestPriceB = lowestPriceMapper(b.VendorFoodItems) || 0;
 
       return LH
         ? lowestPriceA > lowestPriceB
@@ -157,6 +240,10 @@ export default {
         : lowestPriceA > lowestPriceB
         ? -1
         : 1;
+    },
+    clearFilters() {
+      this.selectedFilterValue = undefined;
+      this.selectedFilterOption = undefined;
     },
   },
 };
