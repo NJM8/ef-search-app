@@ -1,5 +1,5 @@
 <template>
-  <div class="mt-4 flex flex-col lg:flex-row">
+  <div class="mt-4 flex flex-col lg:flex-row items-start lg:items-center">
     <span class="mr-4">{{ title }}: </span>
     <select :value="value" name="input-select" class="input" @input="onInput">
       <option disabled :selected="value === ''" value="">Select a value</option>

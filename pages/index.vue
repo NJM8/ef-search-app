@@ -11,7 +11,10 @@
       />
     </div>
     <LoadingText v-if="loading" />
-    <div v-if="searchResultsToDisplay.length > 0">
+    <div
+      v-if="searchResultsToDisplay.length > 0"
+      class="flex flex-col lg:flex-row"
+    >
       <InputSelect
         v-model="selectedFilterOption"
         :select-options="filterOptions"
@@ -28,7 +31,10 @@
         Clear
       </button>
     </div>
-    <div v-if="searchResultsToDisplay.length > 0">
+    <div
+      v-if="searchResultsToDisplay.length > 0"
+      class="flex flex-col lg:flex-row"
+    >
       <InputSelect
         v-model="selectedSortOption"
         :select-options="sortOptions"
