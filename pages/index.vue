@@ -10,55 +10,34 @@
         @input="searchDebounce($event)"
       />
     </div>
-    <div v-if="loading" class="loader">
-      <p>{{ loadingMessage }}</p>
+    <LoadingText v-if="loading" />
+    <div v-if="searchResultsToDisplay.length > 0">
+      <InputSelect
+        v-model="selectedFilterOption"
+        :select-options="filterOptions"
+        title="Filter Option"
+        class="lg:mr-4"
+      />
+      <InputSelect
+        v-model="selectedFilterValue"
+        :select-options="filterValues"
+        title="Filter Value"
+        class="mt-4"
+      />
+      <button class="float-right mt-2 lg:ml-4 page-btn" @click="clearFilters">
+        Clear
+      </button>
     </div>
-    <div
-      v-if="searchResultsToDisplay.length > 0"
-      class="mt-4 flex flex-col lg:flex-row"
-    >
-      <div class="lg:mr-4">
-        <span class="mr-4">Filter Option: </span>
-        <select
-          id="filter-options"
-          v-model="selectedFilterOption"
-          name="filter-options"
-          class="input"
-        >
-          <option
-            v-for="(option, key) in filterOptions"
-            :key="key"
-            :value="option"
-          >
-            {{ option }}
-          </option>
-        </select>
-      </div>
-      <div class="mt-4 lg:mt-0">
-        <span class="mr-4">Filter Value: </span>
-        <select
-          id="filter-by"
-          v-model="selectedFilterValue"
-          name="filter-by"
-          class="input"
-        >
-          <option
-            v-for="(option, key) in filterValues"
-            :key="key"
-            :value="option"
-          >
-            {{ option }}
-          </option>
-        </select>
-      </div>
-      <button class="ml-4" @click="clearFilters">Clear</button>
+    <div v-if="searchResultsToDisplay.length > 0">
+      <InputSelect
+        v-model="selectedSortOption"
+        :select-options="sortOptions"
+        title="Sort By"
+      />
+      <button class="float-right mt-2 lg:ml-4 page-btn" @click="clearSort">
+        Clear
+      </button>
     </div>
-    <SortBy
-      v-if="searchResultsToDisplay.length > 0"
-      v-model="selectedSortOption"
-      :sort-options="sortOptions"
-      class="mt-4"
-    />
     <div class="flex flex-wrap">
       <div v-for="product in searchResultsToDisplay" :key="product.FoodItemID">
         <ProductCard :product="product" />
@@ -75,11 +54,11 @@
 <script>
 import debounce from "lodash/debounce";
 import ProductCard from "@/components/ProductCard";
-import SortBy from "@/components/SortBy";
+import InputSelect from "@/components/InputSelect";
+import LoadingText from "@/components/LoadingText";
 import { lowestPriceMapper } from "@/helpers/helpers";
 
 // globals that will not change and do not need to be reactive
-const BASE_SEARCH_MESSAGE = "Searching";
 const ITEMS_PER_PAGE = 10;
 
 // enums for static values
@@ -101,15 +80,13 @@ export default {
   name: "Index",
   components: {
     ProductCard,
-    SortBy,
+    InputSelect,
+    LoadingText,
   },
   data() {
     return {
       loading: false,
       searchResults: [],
-      searchError: false,
-      loadingMessage: BASE_SEARCH_MESSAGE,
-      loadingInterval: undefined,
       currentPage: 1,
       sortFunctionMap: {
         [SORT_OPTIONS_ENUM.EVERTHING_FOOD_QUALITY_SCORE_HL]: (a, b) =>
@@ -128,14 +105,14 @@ export default {
           a.Desc1 > b.Desc1 ? -1 : 1,
       },
       sortOptions: SORT_OPTIONS_ENUM,
-      selectedSortOption: SORT_OPTIONS_ENUM.ALPHABETICAL_AZ,
+      selectedSortOption: "",
       filterOptions: FILTER_OPTIONS_ENUM,
       filterOptionMap: {
         [FILTER_OPTIONS_ENUM.BRAND]: (item) => item.Brand.Desc1,
         [FILTER_OPTIONS_ENUM.PACKAGE_SIZE]: (item) => item.SizeDesc1,
       },
-      selectedFilterOption: undefined,
-      selectedFilterValue: undefined,
+      selectedFilterOption: "",
+      selectedFilterValue: "",
     };
   },
   computed: {
@@ -185,20 +162,8 @@ export default {
     },
   },
   watch: {
-    // cheesy loading indicator, better served by a fancy loading spinner in a global component
-    loading() {
-      if (this.loading) {
-        this.loadingInterval = setInterval(() => {
-          this.loadingMessage = this.loadingMessage.includes("...")
-            ? BASE_SEARCH_MESSAGE
-            : this.loadingMessage.concat(".");
-        }, 350);
-      } else {
-        clearInterval(this.loadingInterval);
-      }
-    },
     selectedFilterOption() {
-      this.selectedFilterValue = undefined;
+      this.selectedFilterValue = "";
     },
   },
   methods: {
@@ -242,8 +207,11 @@ export default {
         : 1;
     },
     clearFilters() {
-      this.selectedFilterValue = undefined;
-      this.selectedFilterOption = undefined;
+      this.selectedFilterValue = "";
+      this.selectedFilterOption = "";
+    },
+    clearSort() {
+      this.selectedSortOption = "";
     },
   },
 };
@@ -265,12 +233,8 @@ export default {
   @apply bg-gray-400 rounded appearance-none py-3 px-4;
 }
 
-.loader {
-  width: 200px;
-  @apply font-medium text-2xl text-left py-8;
-}
-
 .page-btn {
+  width: 100px;
   @apply border-solid rounded shadow transition px-2 py-1 mx-1 bg-gray-600 text-white;
 }
 </style>
