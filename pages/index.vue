@@ -181,7 +181,7 @@ export default {
         const data = await this.$axios.$get(`?q=${query}`);
         this.searchResults = data.SearchResults;
       } catch (error) {
-        this.searchError = true;
+        console.log(error);
       } finally {
         this.loading = false;
       }
